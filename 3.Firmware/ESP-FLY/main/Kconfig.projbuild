@@ -1,0 +1,124 @@
+menu "ESPDrone Config"
+
+    config TARGET_ESP32_C3_DRONE
+        bool
+        default y
+        help
+            ESP-Drone with ESP32-C3 onboard
+
+    menu "app set"
+        config ENABLE_LEGACY_APP
+            bool "Enable legacy ESPlane1.0 APP"
+            default n
+            help
+                This enables the udp_server_rx2_task of wifi.
+        config ENABLE_POSITION_HOLD_MODE
+            bool "Enable position hold mode"
+            default y
+            help
+                This enables position hold mode when pmw3901 sensors available.
+        config ENABLE_COMMAND_MODE_SET
+            bool "Enable \'setCommandermode\' to transform command"
+            depends on ENABLE_POSITION_HOLD_MODE
+            default y if ENABLE_POSITION_HOLD_MODE
+            default n if !ENABLE_POSITION_HOLD_MODE
+            help
+                This enables assit mode when use old version app.
+    endmenu
+        
+    menu "calibration angle"
+        config PITCH_CALIB
+            int "PITCH_CALIB deg*100"
+            range -200 200
+            default 0
+            help
+                if PITCH error angle is 0.90,set this 90
+
+        config ROLL_CALIB
+            int "ROLL_CALIB deg*100"
+            range -200 200
+            default 0
+            help
+                if ROLL error angle is 0.90,set this 90
+    endmenu
+
+    menu "system"
+        config BASE_STACK_SIZE
+            int "base stack size for system task"
+            range 512 1024
+            default 1024
+    endmenu
+
+    menu "sensors config"
+        config I2C0_PIN_SDA
+            int "I2C0_PIN_SDA GPIO number"
+            range 0 21
+            default 7
+            help
+                GPIO number for I2C0 SDA (MPU6050)
+
+        config I2C0_PIN_SCL
+            int "I2C0_PIN_SCL GPIO number"
+            range 0 21
+            default 6
+            help
+                GPIO number for I2C0 SCL (MPU6050)
+
+        config MPU_PIN_INT
+            int "MPU_PIN_INT GPIO number"
+            range 0 21
+            default 20
+            help
+                GPIO number for MPU6050 interrupt pin
+
+        config ADC1_PIN
+            int "ADC1_PIN GPIO number for battery voltage"
+            range 0 4
+            default 3
+            help
+                GPIO number for ADC1 (battery voltage detection)
+    endmenu
+
+    menu "motors config"
+        choice
+            prompt "Motor type"
+            default MOTOR_BRUSHED_715
+            
+            config MOTOR_BRUSHED_715
+                bool "brushed 715 motor"
+    
+            config MOTOR_BRUSHED_720
+                bool "brushed 720 motor"
+        endchoice
+
+        config MOTOR01_PIN
+            int "MOTOR01_PIN GPIO number"
+            range 0 21
+            default 5
+            help
+                GPIO number for Motor 1
+
+        config MOTOR02_PIN
+            int "MOTOR02_PIN GPIO number"
+            range 0 21
+            default 4
+            help
+                GPIO number for Motor 2
+
+        config MOTOR03_PIN
+            int "MOTOR03_PIN GPIO number"
+            range 0 21
+            default 10
+            help
+                GPIO number for Motor 3
+
+        config MOTOR04_PIN
+            int "MOTOR04_PIN GPIO number"
+            range 0 21
+            default 21
+            help
+                GPIO number for Motor 4
+    endmenu
+
+
+endmenu

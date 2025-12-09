@@ -1,0 +1,56 @@
+# ESP-IDF Build 目录
+build/
+sdkconfig.old
+
+# CMake 生成的文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+
+# 编译生成的文件
+*.bin
+*.elf
+*.map
+*.hex
+*.srec
+
+# 日志和临时文件
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE 配置文件
+.vscode/
+.idea/
+*.code-workspace
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# 用户特定的配置文件（保留 defaults 文件）
+sdkconfig
+!sdkconfig.defaults
+!sdkconfig.defaults.*
+
+# 其他临时文件
+*.bak
+*.backup
+*.orig
+
