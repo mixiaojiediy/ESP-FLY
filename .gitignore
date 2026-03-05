@@ -1,0 +1,40 @@
+# ========== 系统文件 ==========
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# ========== Python (ESP-FLY-PC) ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# ========== 固件构建 ==========
+# ESP-IDF / CMake 构建输出
+3.Firmware/**/build/
+3.Firmware/**/.vscode/
+
+# ========== IDE / 编辑器 ==========
+.idea/
+*.iml
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ========== 日志与临时文件 ==========
+*.log
+*.tmp
+*.bak
+*.cache

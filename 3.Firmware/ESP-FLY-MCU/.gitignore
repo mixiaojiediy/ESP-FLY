@@ -1,0 +1,59 @@
+# ESP-IDF 构建输出
+build/
+# sdkconfig
+sdkconfig.old
+*.bin
+*.elf
+*.map
+
+# 依赖和组件
+dependencies/
+managed_components/
+
+# Python 相关
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+ENV/
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CMake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# 日志文件
+*.log
+log/
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Windows 系统文件
+Thumbs.db
+desktop.ini
+
+# 调试文件
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Flash 工具
+flasher_args.json

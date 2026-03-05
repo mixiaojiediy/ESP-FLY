@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+*.egg
+*.egg-info/
+dist/
+build/
+*.dist-info/
+
+# PyInstaller
+*.manifest
+# *.spec  # 保留 build_exe.spec
+splash.png  # 自动生成的启动画面
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Config files with sensitive data
+# Uncomment if config.ini contains sensitive information
+# config.ini
+
+# Data files
+data/*.csv
+data/*.json
+data/*.txt
+data/config.ini
+!data/.gitkeep
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Build artifacts
+*.exe
+*.msi
+*.app
+*.dmg
+
+# Qt Designer
+*.autosave
+*.pro.user
+
+# Test artifacts
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
