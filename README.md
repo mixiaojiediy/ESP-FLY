@@ -2,6 +2,8 @@
 
 ESP-FLY 无人机相关资源汇总仓库。
 
+![ESP-FLY 无人机实物图](1.Docs/images/drone.jpg)
+
 ## 目录说明
 
 | 文件夹 | 说明 |
