@@ -30,7 +30,7 @@
 | PacketID | 名称     | Payload |
 | -------- | -------- | ------- |
 | `0x01`   | 飞行控制 | 14B     |
-| `0x02`   | PID配置  | 36B     |
+| `0x02`   | PID配置  | 72B     |
 | `0x03`   | 电机测试 | 9B      |
 
 ### 下行（MCU → PC/APP）
@@ -39,7 +39,7 @@
 | -------- | -------- | ------- | ---- |
 | `0x81`   | 高频数据 | 52B     | 50Hz |
 | `0x82`   | 电池状态 | 4B      | 1Hz  |
-| `0x83`   | PID响应  | 36B     | 1Hz  |
+| `0x83`   | PID响应  | 72B     | 1Hz  |
 
 ## 4. Payload 详细定义
 
@@ -52,21 +52,31 @@
 | 8    | Yaw    | float  | 4B   | -180.0 ~ +180.0 度 |
 | 12   | Thrust | uint16 | 2B   | 0 ~ 65535          |
 
-### 4.2 PID配置（0x02） 36 bytes
+### 4.2 PID配置（0x02） 72 bytes
 
-单级PID控制，仅角度环，3轴 × 3参数 = 9个float。
+双环 PID 控制：**角度环（外环）** + **角速度环（内环）**。  
+3 轴 × 2 环 × 3 参数 = 18 个 float = 72 字节。
 
-| 偏移 | 字段           | 类型  | 大小 |
-| ---- | -------------- | ----- | ---- |
-| 0    | roll_angle_kp  | float | 4B   |
-| 4    | roll_angle_ki  | float | 4B   |
-| 8    | roll_angle_kd  | float | 4B   |
-| 12   | pitch_angle_kp | float | 4B   |
-| 16   | pitch_angle_ki | float | 4B   |
-| 20   | pitch_angle_kd | float | 4B   |
-| 24   | yaw_angle_kp   | float | 4B   |
-| 28   | yaw_angle_ki   | float | 4B   |
-| 32   | yaw_angle_kd   | float | 4B   |
+| 偏移 | 字段           | 类型  | 大小 | 说明         |
+| ---- | -------------- | ----- | ---- | ------------ |
+| 0    | roll_angle_kp  | float | 4B   | Roll 角度环 P |
+| 4    | roll_angle_ki  | float | 4B   | Roll 角度环 I |
+| 8    | roll_angle_kd  | float | 4B   | Roll 角度环 D |
+| 12   | pitch_angle_kp | float | 4B   | Pitch 角度环 P |
+| 16   | pitch_angle_ki | float | 4B   | Pitch 角度环 I |
+| 20   | pitch_angle_kd | float | 4B   | Pitch 角度环 D |
+| 24   | yaw_angle_kp   | float | 4B   | Yaw 角度环 P |
+| 28   | yaw_angle_ki   | float | 4B   | Yaw 角度环 I |
+| 32   | yaw_angle_kd   | float | 4B   | Yaw 角度环 D |
+| 36   | roll_rate_kp   | float | 4B   | Roll 角速度环 P |
+| 40   | roll_rate_ki   | float | 4B   | Roll 角速度环 I |
+| 44   | roll_rate_kd   | float | 4B   | Roll 角速度环 D |
+| 48   | pitch_rate_kp  | float | 4B   | Pitch 角速度环 P |
+| 52   | pitch_rate_ki  | float | 4B   | Pitch 角速度环 I |
+| 56   | pitch_rate_kd  | float | 4B   | Pitch 角速度环 D |
+| 60   | yaw_rate_kp    | float | 4B   | Yaw 角速度环 P |
+| 64   | yaw_rate_ki    | float | 4B   | Yaw 角速度环 I |
+| 68   | yaw_rate_kd    | float | 4B   | Yaw 角速度环 D |
 
 ### 4.3 电机测试（0x03） 9 bytes
 
@@ -110,16 +120,27 @@ enable: 0=停止, 1=启用测试
 
 单位：伏特（V）
 
-### 4.6 PID响应（0x83） 36 bytes
+### 4.6 PID响应（0x83） 72 bytes
 
-| 偏移 | 字段           | 类型  | 大小 |
-| ---- | -------------- | ----- | ---- |
-| 0    | roll_angle_kp  | float | 4B   |
-| 4    | roll_angle_ki  | float | 4B   |
-| 8    | roll_angle_kd  | float | 4B   |
-| 12   | pitch_angle_kp | float | 4B   |
-| 16   | pitch_angle_ki | float | 4B   |
-| 20   | pitch_angle_kd | float | 4B   |
-| 24   | yaw_angle_kp   | float | 4B   |
-| 28   | yaw_angle_ki   | float | 4B   |
-| 32   | yaw_angle_kd   | float | 4B   |
+与 PID 配置包结构一致，返回当前飞控中的双环 PID 参数（角度环 + 角速度环）。
+
+| 偏移 | 字段           | 类型  | 大小 | 说明         |
+| ---- | -------------- | ----- | ---- | ------------ |
+| 0    | roll_angle_kp  | float | 4B   | Roll 角度环 P |
+| 4    | roll_angle_ki  | float | 4B   | Roll 角度环 I |
+| 8    | roll_angle_kd  | float | 4B   | Roll 角度环 D |
+| 12   | pitch_angle_kp | float | 4B   | Pitch 角度环 P |
+| 16   | pitch_angle_ki | float | 4B   | Pitch 角度环 I |
+| 20   | pitch_angle_kd | float | 4B   | Pitch 角度环 D |
+| 24   | yaw_angle_kp   | float | 4B   | Yaw 角度环 P |
+| 28   | yaw_angle_ki   | float | 4B   | Yaw 角度环 I |
+| 32   | yaw_angle_kd   | float | 4B   | Yaw 角度环 D |
+| 36   | roll_rate_kp   | float | 4B   | Roll 角速度环 P |
+| 40   | roll_rate_ki   | float | 4B   | Roll 角速度环 I |
+| 44   | roll_rate_kd   | float | 4B   | Roll 角速度环 D |
+| 48   | pitch_rate_kp  | float | 4B   | Pitch 角速度环 P |
+| 52   | pitch_rate_ki  | float | 4B   | Pitch 角速度环 I |
+| 56   | pitch_rate_kd  | float | 4B   | Pitch 角速度环 D |
+| 60   | yaw_rate_kp    | float | 4B   | Yaw 角速度环 P |
+| 64   | yaw_rate_ki    | float | 4B   | Yaw 角速度环 I |
+| 68   | yaw_rate_kd    | float | 4B   | Yaw 角速度环 D |
