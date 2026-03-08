@@ -41,7 +41,6 @@ logs/
 data/*.csv
 data/*.json
 data/*.txt
-data/config.ini
 !data/.gitkeep
 
 # Temporary files

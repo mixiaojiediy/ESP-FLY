@@ -92,9 +92,9 @@ class PidConfigModel:
         attr_name = f"{loop_type}_{axis}"
         config = getattr(self, attr_name, None)
         if config:
-            config.kp = max(self.kp_min, min(kp, self.kp_max))
-            config.ki = max(self.ki_min, min(ki, self.ki_max))
-            config.kd = max(self.kd_min, min(kd, self.kd_max))
+            config.kp = kp
+            config.ki = ki
+            config.kd = kd
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""

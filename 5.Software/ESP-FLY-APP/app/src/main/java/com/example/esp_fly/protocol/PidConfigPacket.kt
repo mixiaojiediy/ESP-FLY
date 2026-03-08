@@ -5,27 +5,24 @@ import java.nio.ByteOrder
 
 /**
  * PID配置数据包 (PacketID = 0x02)
- * 
- * 单级PID控制，仅角度环，3轴 × 3参数 = 9个float
- * 
- * Payload结构 (36 bytes):
- * - Roll:  kp, ki, kd (3个float, 12B)
- * - Pitch: kp, ki, kd (3个float, 12B)
- * - Yaw:   kp, ki, kd (3个float, 12B)
+ *
+ * 双环 PID 控制：角度环（外环）+ 角速度环（内环）
+ * 3轴 × 2环 × 3参数 = 18个float = 72字节
+ *
+ * Payload结构 (72 bytes):
+ * 偏移  0~35: 角度环 Roll/Pitch/Yaw 各 kp,ki,kd
+ * 偏移 36~71: 角速度环 Roll/Pitch/Yaw 各 kp,ki,kd
  */
 object PidConfigPacket {
-    
+
     const val PACKET_ID = 0x02
-    const val PAYLOAD_SIZE = 36  // 9 * 4 bytes
+    const val PAYLOAD_SIZE = 72  // 18 * 4 bytes
 
     /**
-     * 创建PID配置数据包
-     * 
-     * 一次性发送3组角度环PID参数（Roll/Pitch/Yaw）
-     * 
-     * @return 完整数据包（已包含SimplePacket头部和校验和）
+     * 创建双环PID配置数据包
      */
     fun createPacket(
+        // 角度环 (Angle Loop)
         rollAngleKp: Float,
         rollAngleKi: Float,
         rollAngleKd: Float,
@@ -34,27 +31,42 @@ object PidConfigPacket {
         pitchAngleKd: Float,
         yawAngleKp: Float,
         yawAngleKi: Float,
-        yawAngleKd: Float
+        yawAngleKd: Float,
+        // 角速度环 (Rate Loop)
+        rollRateKp: Float,
+        rollRateKi: Float,
+        rollRateKd: Float,
+        pitchRateKp: Float,
+        pitchRateKi: Float,
+        pitchRateKd: Float,
+        yawRateKp: Float,
+        yawRateKi: Float,
+        yawRateKd: Float
     ): ByteArray {
-        // 构造payload (36 bytes: 9个float)
         val payload = ByteBuffer.allocate(PAYLOAD_SIZE).order(ByteOrder.LITTLE_ENDIAN)
-        
-        // Roll角度环PID参数
+
+        // 角度环
         payload.putFloat(rollAngleKp)
         payload.putFloat(rollAngleKi)
         payload.putFloat(rollAngleKd)
-        
-        // Pitch角度环PID参数
         payload.putFloat(pitchAngleKp)
         payload.putFloat(pitchAngleKi)
         payload.putFloat(pitchAngleKd)
-        
-        // Yaw角度环PID参数
         payload.putFloat(yawAngleKp)
         payload.putFloat(yawAngleKi)
         payload.putFloat(yawAngleKd)
 
-        // 使用SimplePacket编码
+        // 角速度环
+        payload.putFloat(rollRateKp)
+        payload.putFloat(rollRateKi)
+        payload.putFloat(rollRateKd)
+        payload.putFloat(pitchRateKp)
+        payload.putFloat(pitchRateKi)
+        payload.putFloat(pitchRateKd)
+        payload.putFloat(yawRateKp)
+        payload.putFloat(yawRateKi)
+        payload.putFloat(yawRateKd)
+
         return SimplePacket.encode(PACKET_ID, payload.array())
     }
 }

@@ -31,6 +31,9 @@ class PidConfigViewModel(QObject):
     rate_pitch_changed = pyqtSignal(float, float, float)
     rate_yaw_changed = pyqtSignal(float, float, float)
 
+    # 范围变化信号
+    pid_range_changed = pyqtSignal(float, float, float, float, float, float)  # p_min, p_max, i_min, i_max, d_min, d_max
+
     # 事件信号
     config_sent = pyqtSignal(bool)
     config_saved = pyqtSignal(bool)
@@ -71,6 +74,14 @@ class PidConfigViewModel(QObject):
         初始化UI显示（在数据绑定建立后调用）
         符合MVVM模式：View绑定后，ViewModel通知View获取初始值
         """
+        self.pid_range_changed.emit(
+            self._model.kp_min,
+            self._model.kp_max,
+            self._model.ki_min,
+            self._model.ki_max,
+            self._model.kd_min,
+            self._model.kd_max,
+        )
         self._emit_all_changed()
 
     # ========== Commands ==========

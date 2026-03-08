@@ -5,6 +5,14 @@ echo ESP-FLY-PC 打包脚本
 echo ========================================
 echo.
 
+REM 激活 .venv 虚拟环境
+if exist .venv\Scripts\activate.bat (
+    echo [提示] 正在激活 .venv 虚拟环境...
+    call .venv\Scripts\activate.bat
+) else (
+    echo [警告] 未找到 .venv 虚拟环境，将使用系统 Python
+)
+
 REM 检查 Python 是否安装
 python --version >nul 2>&1
 if errorlevel 1 (
@@ -58,17 +66,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM 删除 dist 根目录下多余的中间 exe 文件
+if exist dist\ESP-FLY-PC.exe (
+    del /q dist\ESP-FLY-PC.exe
+    echo [提示] 已清理多余的中间文件 dist\ESP-FLY-PC.exe
+)
+
 echo.
 echo ========================================
 echo 打包完成！
 echo ========================================
 echo.
-echo 可执行文件位置: dist\ESP-FLY-PC.exe
+echo 可执行文件位置: dist\ESP-FLY-PC\ESP-FLY-PC.exe
 echo.
 echo 注意：
-echo 1. 双击exe后会立即显示启动画面，加载过程约需几秒
-echo 2. config.ini 已打包进 exe，首次运行会自动创建用户配置文件
-echo 3. 只需要一个 exe 文件即可运行，无需额外文件
-echo 4. 启动画面会显示加载进度，请耐心等待
+echo 1. 请进入 dist\ESP-FLY-PC\ 文件夹，双击其中的 ESP-FLY-PC.exe 运行
+echo 2. 必须保持整个 ESP-FLY-PC 文件夹完整，不能单独复制 exe 文件
+echo 3. config.ini 已打包进程序，首次运行会自动创建用户配置文件
 echo.
 pause

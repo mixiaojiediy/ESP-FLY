@@ -210,6 +210,8 @@ class Application:
         pid_view.reset_requested.connect(self.pid_config_vm.reset_to_default_command)
 
         # ========== ViewModel → View（状态更新）==========
+        # 输入范围
+        self.pid_config_vm.pid_range_changed.connect(pid_view.update_pid_range)
         # 角度环
         self.pid_config_vm.angle_roll_changed.connect(pid_view.update_angle_roll)
         self.pid_config_vm.angle_pitch_changed.connect(pid_view.update_angle_pitch)

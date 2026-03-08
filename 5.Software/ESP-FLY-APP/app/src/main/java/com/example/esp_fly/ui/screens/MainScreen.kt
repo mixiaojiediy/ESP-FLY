@@ -397,17 +397,25 @@ private fun ConsoleLogArea(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     items(messages) { message ->
-                        Text(
-                            text = message,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            color = colorScheme.onSurface.copy(alpha = 0.9f),
-                            lineHeight = 14.sp
-                        )
+                        Column {
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                color = colorScheme.onSurface.copy(alpha = 0.9f),
+                                lineHeight = 15.sp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            HorizontalDivider(
+                                color = colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                thickness = 0.5.dp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
                     }
                 }
             }

@@ -20,7 +20,7 @@ import com.example.esp_fly.viewmodel.PidParams
 import com.example.esp_fly.viewmodel.PidSettings
 
 /**
- * 设置页面（单级PID，仅角度环）
+ * 设置页面（双环PID：角度环 + 角速度环，两个页签切换）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +32,9 @@ fun SettingsScreen(
     onSendAllPid: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    var currentSettings by remember(pidSettings) { mutableStateOf(pidSettings) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+
+    val tabs = listOf("角度环（外环）", "角速度环（内环）")
 
     Box(
         modifier = Modifier
@@ -46,7 +48,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "PID 参数设置（角度环）",
+                        text = "PID 参数设置",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -60,10 +62,8 @@ fun SettingsScreen(
                     }
                 },
                 actions = {
-                    // 发送按钮
                     FilledTonalButton(
                         onClick = {
-                            onPidSettingsChanged(currentSettings)
                             onSendAllPid()
                         },
                         enabled = isConnected,
@@ -83,37 +83,53 @@ fun SettingsScreen(
                 )
             )
 
-            // 内容区域 - 直接显示3个角度环PID卡片
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            // 页签栏
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                contentColor = colorScheme.primary
             ) {
-                PidCard(
-                    title = "Roll 角度",
-                    params = currentSettings.angleRoll,
-                    onParamsChanged = {
-                        currentSettings = currentSettings.copy(angleRoll = it)
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                PidCard(
-                    title = "Pitch 角度",
-                    params = currentSettings.anglePitch,
-                    onParamsChanged = {
-                        currentSettings = currentSettings.copy(anglePitch = it)
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                PidCard(
-                    title = "Yaw 角度",
-                    params = currentSettings.angleYaw,
-                    onParamsChanged = {
-                        currentSettings = currentSettings.copy(angleYaw = it)
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
+            // 内容区域
+            when (selectedTabIndex) {
+                0 -> {
+                    // 角度环（外环）
+                    PidLoopContent(
+                        rollParams = pidSettings.angleRoll,
+                        pitchParams = pidSettings.anglePitch,
+                        yawParams = pidSettings.angleYaw,
+                        labelPrefix = "角度",
+                        onRollChanged = { onPidSettingsChanged(pidSettings.copy(angleRoll = it)) },
+                        onPitchChanged = { onPidSettingsChanged(pidSettings.copy(anglePitch = it)) },
+                        onYawChanged = { onPidSettingsChanged(pidSettings.copy(angleYaw = it)) }
+                    )
+                }
+                1 -> {
+                    // 角速度环（内环）
+                    PidLoopContent(
+                        rollParams = pidSettings.rateRoll,
+                        pitchParams = pidSettings.ratePitch,
+                        yawParams = pidSettings.rateYaw,
+                        labelPrefix = "角速度",
+                        onRollChanged = { onPidSettingsChanged(pidSettings.copy(rateRoll = it)) },
+                        onPitchChanged = { onPidSettingsChanged(pidSettings.copy(ratePitch = it)) },
+                        onYawChanged = { onPidSettingsChanged(pidSettings.copy(rateYaw = it)) }
+                    )
+                }
             }
         }
 
@@ -149,6 +165,46 @@ fun SettingsScreen(
 }
 
 /**
+ * 单个PID环的内容（Roll/Pitch/Yaw 三列卡片）
+ */
+@Composable
+private fun PidLoopContent(
+    rollParams: PidParams,
+    pitchParams: PidParams,
+    yawParams: PidParams,
+    labelPrefix: String,
+    onRollChanged: (PidParams) -> Unit,
+    onPitchChanged: (PidParams) -> Unit,
+    onYawChanged: (PidParams) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        PidCard(
+            title = "Roll $labelPrefix",
+            params = rollParams,
+            onParamsChanged = onRollChanged,
+            modifier = Modifier.weight(1f)
+        )
+        PidCard(
+            title = "Pitch $labelPrefix",
+            params = pitchParams,
+            onParamsChanged = onPitchChanged,
+            modifier = Modifier.weight(1f)
+        )
+        PidCard(
+            title = "Yaw $labelPrefix",
+            params = yawParams,
+            onParamsChanged = onYawChanged,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+/**
  * PID参数卡片
  */
 @Composable
@@ -175,7 +231,6 @@ private fun PidCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 标题
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
@@ -183,9 +238,8 @@ private fun PidCard(
                 color = colorScheme.primary
             )
 
-            Divider(color = colorScheme.outlineVariant)
+            HorizontalDivider(color = colorScheme.outlineVariant)
 
-            // P参数
             PidInputField(
                 label = "P (比例)",
                 value = params.kp,
@@ -193,7 +247,6 @@ private fun PidCard(
                 description = "响应速度，值越大响应越快"
             )
 
-            // I参数
             PidInputField(
                 label = "I (积分)",
                 value = params.ki,
@@ -201,7 +254,6 @@ private fun PidCard(
                 description = "消除稳态误差"
             )
 
-            // D参数
             PidInputField(
                 label = "D (微分)",
                 value = params.kd,
@@ -223,7 +275,14 @@ private fun PidInputField(
     description: String
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    var textValue by remember(value) { mutableStateOf(value.toString()) }
+    var textValue by remember { mutableStateOf(value.toString()) }
+    var lastSyncedValue by remember { mutableFloatStateOf(value) }
+
+    // 仅当外部值被其他来源修改时（非本输入框触发）才同步文本
+    if (value != lastSyncedValue && value != textValue.toFloatOrNull()) {
+        textValue = value.toString()
+        lastSyncedValue = value
+    }
 
     Column {
         Text(
@@ -232,14 +291,17 @@ private fun PidInputField(
             fontWeight = FontWeight.Medium,
             color = colorScheme.onSurface
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         OutlinedTextField(
             value = textValue,
             onValueChange = { newValue ->
                 textValue = newValue
-                newValue.toFloatOrNull()?.let { onValueChanged(it) }
+                newValue.toFloatOrNull()?.let {
+                    lastSyncedValue = it
+                    onValueChanged(it)
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -250,9 +312,9 @@ private fun PidInputField(
                 unfocusedBorderColor = colorScheme.outline
             )
         )
-        
+
         Spacer(modifier = Modifier.height(2.dp))
-        
+
         Text(
             text = description,
             style = MaterialTheme.typography.bodySmall,

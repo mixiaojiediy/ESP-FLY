@@ -1023,7 +1023,7 @@ idf.py show_efuse_table
 ## 版本历史
 
 - **V5_1**: 当前版本
-  - 基于 ESP-IDF v4.4
+  - 基于 ESP-IDF v5.4
   - 支持 Wi-Fi AP 模式
   - 支持手机 APP 控制
 

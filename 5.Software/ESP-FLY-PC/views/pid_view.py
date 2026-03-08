@@ -53,15 +53,6 @@ class PidView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        # PID参数范围
-        self._kp_min = 0.0
-        self._kp_max = 1000.0
-        self._ki_min = 0.0
-        self._ki_max = 1000.0
-        self._kd_min = 0.0
-        self._kd_max = 100.0
-
         self._init_ui()
 
     def _init_ui(self):
@@ -122,7 +113,7 @@ class PidView(QWidget):
         # P参数
         layout.addWidget(QLabel("P:"))
         kp_spin = EditableDoubleSpinBox()
-        kp_spin.setRange(self._kp_min, self._kp_max)
+        kp_spin.setRange(0.0, 1000.0)
         kp_spin.setSingleStep(0.1)
         kp_spin.setDecimals(2)
         kp_spin.setKeyboardTracking(False)
@@ -132,7 +123,7 @@ class PidView(QWidget):
         # I参数
         layout.addWidget(QLabel("I:"))
         ki_spin = EditableDoubleSpinBox()
-        ki_spin.setRange(self._ki_min, self._ki_max)
+        ki_spin.setRange(0.0, 1000.0)
         ki_spin.setSingleStep(0.1)
         ki_spin.setDecimals(3)
         ki_spin.setKeyboardTracking(False)
@@ -142,7 +133,7 @@ class PidView(QWidget):
         # D参数
         layout.addWidget(QLabel("D:"))
         kd_spin = EditableDoubleSpinBox()
-        kd_spin.setRange(self._kd_min, self._kd_max)
+        kd_spin.setRange(0.0, 1000.0)
         kd_spin.setSingleStep(0.01)
         kd_spin.setDecimals(3)
         kd_spin.setKeyboardTracking(False)
@@ -214,6 +205,23 @@ class PidView(QWidget):
         kp_spin.blockSignals(False)
         ki_spin.blockSignals(False)
         kd_spin.blockSignals(False)
+
+    @pyqtSlot(float, float, float, float, float, float)
+    def update_pid_range(
+        self,
+        p_min: float,
+        p_max: float,
+        i_min: float,
+        i_max: float,
+        d_min: float,
+        d_max: float,
+    ):
+        """更新所有SpinBox的输入范围"""
+        for loop_type in ["angle", "rate"]:
+            for axis in ["roll", "pitch", "yaw"]:
+                getattr(self, f"_{loop_type}_{axis}_kp").setRange(p_min, p_max)
+                getattr(self, f"_{loop_type}_{axis}_ki").setRange(i_min, i_max)
+                getattr(self, f"_{loop_type}_{axis}_kd").setRange(d_min, d_max)
 
     def get_all_pid_values(self) -> dict:
         """获取所有PID参数值"""

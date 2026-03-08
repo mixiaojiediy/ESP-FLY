@@ -33,14 +33,18 @@ data class PidParams(
 )
 
 /**
- * PID设置状态（单级PID，仅角度环）
+ * PID设置状态（双环PID：角度环 + 角速度环）
  * 默认值与 ESP-FLY 固件 pid.h 中的定义保持一致
  */
 data class PidSettings(
-    // 角度环 (Angle) - Roll/Pitch/Yaw
+    // 角度环 (Angle Loop) - 外环
     val angleRoll: PidParams = PidParams(5.9f, 2.9f, 0f),
     val anglePitch: PidParams = PidParams(5.9f, 2.9f, 0f),
-    val angleYaw: PidParams = PidParams(6f, 1f, 0.35f)
+    val angleYaw: PidParams = PidParams(6f, 1f, 0.35f),
+    // 角速度环 (Rate Loop) - 内环
+    val rateRoll: PidParams = PidParams(1.5f, 0.5f, 0.05f),
+    val ratePitch: PidParams = PidParams(1.5f, 0.5f, 0.05f),
+    val rateYaw: PidParams = PidParams(2f, 0.5f, 0f)
 )
 
 /**
@@ -74,9 +78,9 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         private const val TAG = "DroneViewModel"
         private const val CONTROL_FREQUENCY_MS = 20L  // 50Hz
         private const val MAX_CONSOLE_MESSAGES = 100
-        private const val CONSOLE_PRINT_INTERVAL_MS = 1000L  // 1Hz (每秒打印一次)
-        
-        // DataStore Keys（角度环 9个参数）
+        private const val CONSOLE_PRINT_INTERVAL_MS = 1000L  // 1Hz
+
+        // DataStore Keys - 角度环 (9个参数)
         private val KEY_ANGLE_ROLL_KP = floatPreferencesKey("angle_roll_kp")
         private val KEY_ANGLE_ROLL_KI = floatPreferencesKey("angle_roll_ki")
         private val KEY_ANGLE_ROLL_KD = floatPreferencesKey("angle_roll_kd")
@@ -86,6 +90,17 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         private val KEY_ANGLE_YAW_KP = floatPreferencesKey("angle_yaw_kp")
         private val KEY_ANGLE_YAW_KI = floatPreferencesKey("angle_yaw_ki")
         private val KEY_ANGLE_YAW_KD = floatPreferencesKey("angle_yaw_kd")
+
+        // DataStore Keys - 角速度环 (9个参数)
+        private val KEY_RATE_ROLL_KP = floatPreferencesKey("rate_roll_kp")
+        private val KEY_RATE_ROLL_KI = floatPreferencesKey("rate_roll_ki")
+        private val KEY_RATE_ROLL_KD = floatPreferencesKey("rate_roll_kd")
+        private val KEY_RATE_PITCH_KP = floatPreferencesKey("rate_pitch_kp")
+        private val KEY_RATE_PITCH_KI = floatPreferencesKey("rate_pitch_ki")
+        private val KEY_RATE_PITCH_KD = floatPreferencesKey("rate_pitch_kd")
+        private val KEY_RATE_YAW_KP = floatPreferencesKey("rate_yaw_kp")
+        private val KEY_RATE_YAW_KI = floatPreferencesKey("rate_yaw_ki")
+        private val KEY_RATE_YAW_KD = floatPreferencesKey("rate_yaw_kd")
     }
 
     private val dataStore = application.dataStore
@@ -97,10 +112,10 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
 
     // 控制命令发送任务
     private var controlJob: Job? = null
-    
+
     // 控制台打印任务
     private var consolePrintJob: Job? = null
-    
+
     // 当前摇杆位置
     private var leftJoystickY: Float = 0f   // 油门
     private var rightJoystickX: Float = 0f  // 映射到 pitch (左负右正)
@@ -108,47 +123,55 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
 
     // 当前油门值(保持)
     private var currentThrust: Int = 0
-    
+
     // 触摸状态追踪
     private var isLeftJoystickTouching: Boolean = false
     private var isRightJoystickTouching: Boolean = false
     private var needSendZeroCommand: Boolean = false
-    
-    // 最后收到的PID参数
+
+    // 最后收到的PID参数（null表示已打印或未收到）
     private var lastPidResponse: PidResponsePacket.PidResponseData? = null
+    private var pidResponsePrinted: Boolean = false
+
+    // 最后收到的RPY角度（来自0x81高频数据包）
+    private var lastRpyData: Triple<Float, Float, Float>? = null  // roll, pitch, yaw
+    private var rpyDataPrinted: Boolean = false
 
     init {
-        // 监听连接状态
         viewModelScope.launch {
             udpClient.isConnected.collect { connected ->
                 _uiState.update { it.copy(isConnected = connected) }
             }
         }
 
-        // 监听电池信息
         viewModelScope.launch {
             udpClient.batteryInfo.collect { battery ->
-                _uiState.update { 
+                _uiState.update {
                     it.copy(batteryVoltage = battery.voltage)
                 }
             }
         }
 
-        // 监听PID参数响应
         viewModelScope.launch {
             udpClient.pidResponse.collect { pidData ->
                 lastPidResponse = pidData
+                pidResponsePrinted = false
             }
         }
 
-        // 监听连接消息
+        viewModelScope.launch {
+            udpClient.rpyData.collect { (roll, pitch, yaw) ->
+                lastRpyData = Triple(roll, pitch, yaw)
+                rpyDataPrinted = false
+            }
+        }
+
         viewModelScope.launch {
             udpClient.connectionMessage.collect { message ->
                 _uiState.update { it.copy(connectionMessage = message) }
             }
         }
 
-        // 加载PID设置
         loadPidSettings()
     }
 
@@ -169,9 +192,6 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * 连接设备
-     */
     private suspend fun connect() {
         Log.i(TAG, "========== DroneViewModel.connect() called ==========")
         val success = udpClient.connect()
@@ -187,9 +207,6 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         Log.i(TAG, "=====================================================")
     }
 
-    /**
-     * 断开连接
-     */
     private fun disconnect() {
         stopControlLoop()
         stopConsolePrintLoop()
@@ -198,15 +215,10 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * 更新左摇杆位置(油门)
-     * 油门模式：中心=0%，向上=0~100%，向下忽略
      */
     fun updateLeftJoystick(position: JoystickPosition) {
         leftJoystickY = position.y
-        
-        // position.y: 0~1 (中心为0，向上最大为1)
-        // 映射到 0~60000
         currentThrust = (position.y * Commander.THRUST_MAX).toInt()
-        
         updateFlightData()
     }
 
@@ -216,7 +228,6 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
     fun updateRightJoystick(position: JoystickPosition) {
         rightJoystickX = position.x
         rightJoystickY = position.y
-        
         updateFlightData()
     }
 
@@ -227,8 +238,6 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         val wasAnyTouching = isLeftJoystickTouching || isRightJoystickTouching
         isLeftJoystickTouching = isTouching
         val isAnyTouching = isLeftJoystickTouching || isRightJoystickTouching
-        
-        // 从"有触摸"变为"无触摸"时，标记需要发送归零命令
         if (wasAnyTouching && !isAnyTouching) {
             needSendZeroCommand = true
         }
@@ -241,21 +250,14 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         val wasAnyTouching = isLeftJoystickTouching || isRightJoystickTouching
         isRightJoystickTouching = isTouching
         val isAnyTouching = isLeftJoystickTouching || isRightJoystickTouching
-        
-        // 从"有触摸"变为"无触摸"时，标记需要发送归零命令
         if (wasAnyTouching && !isAnyTouching) {
             needSendZeroCommand = true
         }
     }
 
-    /**
-     * 更新飞行数据显示
-     * 右摇杆映射: 左=pitch负, 右=pitch正, 上=roll负, 下=roll正
-     */
     private fun updateFlightData() {
-        val roll = -rightJoystickY * Commander.MAX_ANGLE   // 上=负, 下=正
-        val pitch = rightJoystickX * Commander.MAX_ANGLE   // 左=负, 右=正
-        
+        val roll = -rightJoystickY * Commander.MAX_ANGLE
+        val pitch = rightJoystickX * Commander.MAX_ANGLE
         _uiState.update {
             it.copy(
                 flightData = FlightData(
@@ -268,9 +270,6 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * 启动控制命令发送循环
-     */
     private fun startControlLoop() {
         controlJob?.cancel()
         controlJob = viewModelScope.launch(Dispatchers.IO) {
@@ -281,56 +280,35 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * 停止控制命令发送循环
-     */
     private fun stopControlLoop() {
         controlJob?.cancel()
         controlJob = null
     }
 
-    /**
-     * 发送控制命令
-     * 检测触摸状态变化，在松开手指时发送归零命令
-     */
     private fun sendControlCommand() {
-        // 检查是否需要发送归零命令（双手都松开时）
         if (needSendZeroCommand) {
-            // 发送全0命令，让飞机停止
             val zeroPacket = Commander.createCommandPacket(0f, 0f, 0f, 0)
             udpClient.sendPacket(zeroPacket)
             Log.d(TAG, "发送归零命令: Roll=0, Pitch=0, Yaw=0, Thrust=0")
-            
-            // 清除标志
             needSendZeroCommand = false
         }
-        
-        // 检查是否有摇杆在活动状态（阈值0.01避免浮点误差）
-        val hasThrottle = leftJoystickY > 0.01f  // 油门有值
-        val hasAttitude = abs(rightJoystickX) > 0.01f || abs(rightJoystickY) > 0.01f  // 姿态摇杆有值
-        
-        // 如果摇杆无输入，跳过发送
-        if (!hasThrottle && !hasAttitude) {
-            return
-        }
-        
-        // 正常发送控制命令 (右摇杆: 左=pitch负, 右=pitch正, 上=roll负, 下=roll正)
+
+        val hasThrottle = leftJoystickY > 0.01f
+        val hasAttitude = abs(rightJoystickX) > 0.01f || abs(rightJoystickY) > 0.01f
+        if (!hasThrottle && !hasAttitude) return
+
         val roll = -rightJoystickY * Commander.MAX_ANGLE
         val pitch = rightJoystickX * Commander.MAX_ANGLE
-        val yaw = 0f  // 暂不使用偏航控制
-        
+        val yaw = 0f
+
         val packet = Commander.createCommandPacket(roll, pitch, yaw, currentThrust)
         udpClient.sendPacket(packet)
-        
-        // 每秒打印一次控制命令（用于调试）
+
         if (System.currentTimeMillis() % 1000 < CONTROL_FREQUENCY_MS) {
             Log.d(TAG, "Control CMD: Roll=%.2f, Pitch=%.2f, Yaw=%.2f, Thrust=%d".format(roll, pitch, yaw, currentThrust))
         }
     }
 
-    /**
-     * 启动控制台打印循环 (1Hz)
-     */
     private fun startConsolePrintLoop() {
         consolePrintJob?.cancel()
         consolePrintJob = viewModelScope.launch(Dispatchers.IO) {
@@ -341,30 +319,37 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * 停止控制台打印循环
-     */
     private fun stopConsolePrintLoop() {
         consolePrintJob?.cancel()
         consolePrintJob = null
     }
 
     /**
-     * 打印PID参数到控制台 (1秒一次)
+     * 打印设备上报数据到控制台（1秒一次，只打印新收到的数据）
      */
     private fun printDataToConsole() {
+        val newMessages = mutableListOf<String>()
+
+        val rpyData = lastRpyData
+        if (rpyData != null && !rpyDataPrinted) {
+            val (roll, pitch, yaw) = rpyData
+            val rpyLog = "R:%-+8.2f P:%-+8.2f Y:%-+8.2f".format(roll, pitch, yaw)
+            newMessages.add(rpyLog)
+            rpyDataPrinted = true
+        }
+
         val pidData = lastPidResponse
-        if (pidData != null) {
-            // 打印PID参数（简化格式）
-            val pidLog = pidData.toCompactString()
-            Log.d(TAG, pidLog)
-            
-            // 添加到UI控制台
+        if (pidData != null && !pidResponsePrinted) {
+            newMessages.add(pidData.toCompactString())
+            pidResponsePrinted = true
+        }
+
+        if (newMessages.isNotEmpty()) {
             viewModelScope.launch(Dispatchers.Main) {
                 _uiState.update { state ->
-                    val newMessages = (state.consoleMessages + pidLog)
+                    val updated = (state.consoleMessages + newMessages)
                         .takeLast(MAX_CONSOLE_MESSAGES)
-                    state.copy(consoleMessages = newMessages)
+                    state.copy(consoleMessages = updated)
                 }
             }
         }
@@ -386,7 +371,7 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 发送所有PID参数到设备（一次性发送，仅角度环9个参数）
+     * 发送双环PID参数到设备（18个float，72字节）
      */
     fun sendAllPidToDevice() {
         val settings = _uiState.value.pidSettings
@@ -400,11 +385,19 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
                 pitchAngleKd = settings.anglePitch.kd,
                 yawAngleKp = settings.angleYaw.kp,
                 yawAngleKi = settings.angleYaw.ki,
-                yawAngleKd = settings.angleYaw.kd
+                yawAngleKd = settings.angleYaw.kd,
+                rollRateKp = settings.rateRoll.kp,
+                rollRateKi = settings.rateRoll.ki,
+                rollRateKd = settings.rateRoll.kd,
+                pitchRateKp = settings.ratePitch.kp,
+                pitchRateKi = settings.ratePitch.ki,
+                pitchRateKd = settings.ratePitch.kd,
+                yawRateKp = settings.rateYaw.kp,
+                yawRateKi = settings.rateYaw.ki,
+                yawRateKd = settings.rateYaw.kd
             )
             udpClient.sendPacket(packet)
-            
-            Log.d(TAG, "PID参数已发送")
+            Log.d(TAG, "双环PID参数已发送 (72字节)")
         }
     }
 
@@ -424,13 +417,22 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
                 prefs[KEY_ANGLE_YAW_KP] = settings.angleYaw.kp
                 prefs[KEY_ANGLE_YAW_KI] = settings.angleYaw.ki
                 prefs[KEY_ANGLE_YAW_KD] = settings.angleYaw.kd
+                // 角速度环
+                prefs[KEY_RATE_ROLL_KP] = settings.rateRoll.kp
+                prefs[KEY_RATE_ROLL_KI] = settings.rateRoll.ki
+                prefs[KEY_RATE_ROLL_KD] = settings.rateRoll.kd
+                prefs[KEY_RATE_PITCH_KP] = settings.ratePitch.kp
+                prefs[KEY_RATE_PITCH_KI] = settings.ratePitch.ki
+                prefs[KEY_RATE_PITCH_KD] = settings.ratePitch.kd
+                prefs[KEY_RATE_YAW_KP] = settings.rateYaw.kp
+                prefs[KEY_RATE_YAW_KI] = settings.rateYaw.ki
+                prefs[KEY_RATE_YAW_KD] = settings.rateYaw.kd
             }
         }
     }
 
     /**
      * 从DataStore加载PID设置
-     * 默认值与 ESP-FLY 固件 pid.h 中的定义保持一致
      */
     private fun loadPidSettings() {
         viewModelScope.launch {
@@ -450,6 +452,21 @@ class DroneViewModel(application: Application) : AndroidViewModel(application) {
                         prefs[KEY_ANGLE_YAW_KP] ?: 6f,
                         prefs[KEY_ANGLE_YAW_KI] ?: 1f,
                         prefs[KEY_ANGLE_YAW_KD] ?: 0.35f
+                    ),
+                    rateRoll = PidParams(
+                        prefs[KEY_RATE_ROLL_KP] ?: 1.5f,
+                        prefs[KEY_RATE_ROLL_KI] ?: 0.5f,
+                        prefs[KEY_RATE_ROLL_KD] ?: 0.05f
+                    ),
+                    ratePitch = PidParams(
+                        prefs[KEY_RATE_PITCH_KP] ?: 1.5f,
+                        prefs[KEY_RATE_PITCH_KI] ?: 0.5f,
+                        prefs[KEY_RATE_PITCH_KD] ?: 0.05f
+                    ),
+                    rateYaw = PidParams(
+                        prefs[KEY_RATE_YAW_KP] ?: 2f,
+                        prefs[KEY_RATE_YAW_KI] ?: 0.5f,
+                        prefs[KEY_RATE_YAW_KD] ?: 0f
                     )
                 )
                 _uiState.update { it.copy(pidSettings = settings) }

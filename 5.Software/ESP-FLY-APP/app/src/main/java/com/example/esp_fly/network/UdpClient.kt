@@ -46,6 +46,10 @@ class UdpClient(
     private val _pidResponse = MutableSharedFlow<PidResponsePacket.PidResponseData>(replay = 1)
     val pidResponse: SharedFlow<PidResponsePacket.PidResponseData> = _pidResponse
 
+    // RPY角度数据流（来自0x81高频数据包，Triple: roll, pitch, yaw，单位：度）
+    private val _rpyData = MutableSharedFlow<Triple<Float, Float, Float>>(replay = 1)
+    val rpyData: SharedFlow<Triple<Float, Float, Float>> = _rpyData
+
     // 连接状态消息
     private val _connectionMessage = MutableSharedFlow<String>(replay = 1)
     val connectionMessage: SharedFlow<String> = _connectionMessage
@@ -381,8 +385,17 @@ class UdpClient(
 
         when (packet.packetId) {
             0x81 -> {
-                // 高频飞行数据包 (0x81, 50Hz) - APP端不处理，仅用于PC端
-                Log.v(TAG, "Received high freq data packet (0x81) - ignored on APP")
+                // 高频飞行数据包 (0x81, 50Hz) - 解析RPY角度（偏移0~11字节，3个float）
+                val payload = packet.payload
+                if (payload.size >= 12) {
+                    val roll = java.nio.ByteBuffer.wrap(payload, 0, 4)
+                        .order(java.nio.ByteOrder.LITTLE_ENDIAN).float
+                    val pitch = java.nio.ByteBuffer.wrap(payload, 4, 4)
+                        .order(java.nio.ByteOrder.LITTLE_ENDIAN).float
+                    val yaw = java.nio.ByteBuffer.wrap(payload, 8, 4)
+                        .order(java.nio.ByteOrder.LITTLE_ENDIAN).float
+                    _rpyData.emit(Triple(roll, pitch, yaw))
+                }
             }
             BatteryPacket.PACKET_ID -> {
                 // 电池状态包 (0x82, 1Hz)
