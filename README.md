@@ -1,14 +1,9 @@
 # ESP-FLY 项目
 
-ESP-FLY 无人机相关资源汇总仓库。
-
-![ESP-FLY 无人机实物图](1.Docs/images/drone.jpg)
-
 ## 目录说明
 
 | 文件夹         | 说明                                                                                            |
 | -------------- | ----------------------------------------------------------------------------------------------- |
-| **1.Docs**     | 项目文档与资源：技术实现文档（MCU / PC 上位机 / APP）、通信协议接口文档，以及图片等说明材料     |
 | **2.3D**       | 3D 模型文件，包含 ESP-FLY 无人机的外形模型（如 .f3z 格式）                                      |
 | **3.Firmware** | 固件工程，ESP-FLY 飞控固件（基于 Crazyflie 框架）                                               |
 | **4.Hardware** | 硬件电路设计，托管于 [嘉立创开源平台](https://oshwhub.com/zj907638274/esp-fly-wu-ren-ji-public) |
@@ -19,4 +14,5 @@ ESP-FLY 无人机相关资源汇总仓库。
 ## 联系方式
 
 - **QQ 群**：710358639
-- **项目汇总网站**：[www.diyshare.com](http://www.diyshare.cn)
+- **项目入口**：[www.diyshare.com](http://www.diyshare.cn)
+
