@@ -14,5 +14,5 @@
 ## 联系方式
 
 - **QQ 群**：710358639
-- **项目入口**：[www.diyshare.com](http://www.diyshare.cn)
+- **项目入口**：[www.diyshare.cn](http://www.diyshare.cn)
 
