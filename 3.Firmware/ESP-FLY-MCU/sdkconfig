@@ -405,7 +405,7 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# ESPDrone Config
+# ESP-FLY Config
 #
 CONFIG_TARGET_ESP32_DRONE=y
 
@@ -450,7 +450,7 @@ CONFIG_MOTOR02_PIN=33
 CONFIG_MOTOR03_PIN=25
 CONFIG_MOTOR04_PIN=5
 # end of motors config
-# end of ESPDrone Config
+# end of ESP-Fly Config
 
 #
 # Compiler options

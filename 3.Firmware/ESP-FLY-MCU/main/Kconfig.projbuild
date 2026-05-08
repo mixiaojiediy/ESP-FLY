@@ -1,4 +1,4 @@
-menu "ESPDrone Config"
+menu "ESP-FLY Config"
 
     config TARGET_ESP32_DRONE
         bool
